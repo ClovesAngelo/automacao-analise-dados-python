@@ -1,30 +1,48 @@
 from pathlib import Path
+
 import pandas as pd
 
 
 def gerar_resumo(df: pd.DataFrame) -> pd.DataFrame:
-    return (
-        df.groupby(["categoria", "forma_pagamento"], dropna=False)
+    """
+    Gera um resumo simples das vendas:
+    - total vendido por produto
+    - quantidade total por produto
+    """
+    resumo = (
+        df.groupby("produto", as_index=False)
         .agg(
-            total_vendas=("valor_total", "sum"),
-            quantidade=("quantidade", "sum"),
-            ticket_medio=("valor_total", "mean"),
+            total_vendas=("valor", "sum"),
+            quantidade_total=("quantidade", "sum"),
         )
-        .reset_index()
+        .sort_values("total_vendas", ascending=False)
     )
 
+    return resumo
 
-def salvar_saidas(df: pd.DataFrame, resumo: pd.DataFrame, pasta_saida: str | Path):
-    pasta = Path(pasta_saida)
-    pasta.mkdir(parents=True, exist_ok=True)
 
-    csv_path = pasta / "saida_tratada.csv"
-    excel_path = pasta / "relatorio.xlsx"
+def salvar_saidas(df_final, resumo, out_processed: Path, out_reports: Path, gerar_excel: bool = False):
+    out_processed.mkdir(parents=True, exist_ok=True)
+    out_reports.mkdir(parents=True, exist_ok=True)
 
-    df.to_csv(csv_path, index=False)
+    # 1) Dados finais tratados (padrão mundial)
+    df_path = out_processed / "dados_tratados.csv"
+    df_final.to_csv(df_path, index=False, encoding="utf-8")
 
-    with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
-        df.to_excel(writer, sheet_name="dados_tratados", index=False)
-        resumo.to_excel(writer, sheet_name="resumo", index=False)
+    # 2) Versão compatível com Excel BR (opcional)
+    if gerar_excel:
+        df_excel_path = out_processed / "dados_tratados_excel.csv"
+        df_final.to_csv(df_excel_path, index=False, sep=";", encoding="utf-8-sig")
 
-    return csv_path, excel_path
+    # 3) Resumo/relatório
+    # Se resumo for DataFrame:
+    try:
+        resumo_path = out_reports / "resumo.csv"
+        resumo.to_csv(resumo_path, index=False, encoding="utf-8")
+        if gerar_excel:
+            resumo_excel_path = out_reports / "resumo_excel.csv"
+            resumo.to_csv(resumo_excel_path, index=False, sep=";", encoding="utf-8-sig")
+    except AttributeError:
+        # Se resumo não for DataFrame, salva como texto simples
+        resumo_path = out_reports / "resumo.txt"
+        resumo_path.write_text(str(resumo), encoding="utf-8")

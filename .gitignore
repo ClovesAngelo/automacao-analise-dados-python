@@ -1,10 +1,14 @@
 .venv/
 __pycache__/
 *.pyc
+
 logs/
 *.log
+
 .vscode/
 .idea/
-data/saida_tratada.csv
-data/relatorio.xlsx
-data/resumo_execucao.txt
+
+# Dados e saídas (NÃO versionar)
+data/raw/
+data/processed/
+data/reports/
